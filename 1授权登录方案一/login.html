@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跳转中...</title>
+    <script src="./jq.js"></script>
+    <script>
+        // 微信公众号appid
+        let APP_ID = "XXXX";
+        let waterCorpId = "3";
+        let openId = "";
+        
+        // 部署在服务器上的登录页面 matUrl
+        let matUrl = "http://XXXX/login.html"
+
+        // 最后期望登录成功后跳转的地址
+        let forwardUrl = "http://XXXX/index.html"
+
+        // 拿到code请求后端的接口地址
+        let WXLOGIN = "http://XXXX/wxLogin.json"
+
+        function getValue(key) {
+            let { search } = location;
+            let start = search.indexOf(key);
+            if (start == -1) {
+                return
+            } else {
+                var end = search.indexOf("&", start);
+                if (end == -1) {
+                    end = search.length;
+                }
+            }
+            let str = search.substring(start, end);
+            let arr = str.split("=");
+            return arr[1];
+        }
+
+        function getWxCode() {
+            let appid = APP_ID;
+            let params = location.search;
+            if (params == "" || params == undefined) {
+                params = "?a=1";
+            } else {
+                params = params.replace("code=", "code0=");
+            }
+            params += "&isRedirect=1";
+            let formatUrl = encodeURIComponent(matUrl + params);
+            let linkurl =
+                "https://open.weixin.qq.com/connect/oauth2/authorize?appid=" +
+                appid +
+                "&redirect_uri=" +
+                formatUrl +
+                "&response_type=code&scope=snsapi_base&connect_redirect=1#wechat_redirect";
+            location.href = linkurl;
+        }
+
+        function checkUser() {
+            let code = getValue('code')
+            let dataJson = { "waterCorpId": 3, code }
+            $.ajax({
+                type: "post",
+                url: WXLOGIN,
+                data: { 'requestPara': JSON.stringify(dataJson) },
+                success: function (data) {
+                    if (data.status == 0) {
+                        localStorage["token"] = data.data.token;
+                        localStorage["openId" + waterCorpId] = data.data.openId;
+                        localStorage.userMobile = data.data.userMobile;
+                        location.href = forwardUrl;
+                    } else if (data.status == 1002) {
+                        location.href = forwardUrl;
+                    } else if (data.status == '-2') {
+                        openId = data.data;
+                        localStorage.openId = data.data;
+                    }
+                },
+                error: function () {
+                    textTip('网络连接失败！');
+                    WeixinJSBridge.call('closeWindow');
+                }
+            });
+        }
+
+        if (!getValue('isRedirect')) {
+            getWxCode();
+        } else {
+            checkUser();
+        }
+    </script>
+</head>
+
+<body>
+    <div class="water_declare">正在自动登录。。。</div>
+</body>
+
+</html>
